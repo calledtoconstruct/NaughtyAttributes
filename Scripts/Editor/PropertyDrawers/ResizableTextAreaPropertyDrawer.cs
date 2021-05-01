@@ -8,12 +8,24 @@ namespace NaughtyAttributes.Editor
 	[CustomPropertyDrawer(typeof(ResizableTextAreaAttribute))]
 	public class ResizableTextAreaPropertyDrawer : PropertyDrawerBase
 	{
+		private Func<string, float> calculateMaximumTextAreaHeight;
+		private float? minimum;
+		private float? maximum;
+
+		public ResizableTextAreaPropertyDrawer()
+		{
+			calculateMaximumTextAreaHeight = InitializeMaximumHeightCalculator;
+		}
+
 		protected override float GetPropertyHeight_Internal(SerializedProperty property, GUIContent label)
 		{
 			if (property.propertyType == SerializedPropertyType.String)
 			{
 				float labelHeight = EditorGUIUtility.singleLineHeight;
-				float textAreaHeight = GetTextAreaHeight(property.stringValue);
+				float textAreaHeight = Math.Min(
+					Math.Max(GetTextAreaHeight(property.stringValue), GetMinimumTextAreaHeight()),
+					GetMaximumTextAreaHeight(property.stringValue)
+				);
 				return labelHeight + textAreaHeight;
 			}
 			else
@@ -45,7 +57,10 @@ namespace NaughtyAttributes.Editor
 					x = labelRect.x,
 					y = labelRect.y + EditorGUIUtility.singleLineHeight,
 					width = labelRect.width,
-					height = GetTextAreaHeight(property.stringValue)
+					height = Math.Min(
+						Math.Max(GetTextAreaHeight(property.stringValue), GetMinimumTextAreaHeight()),
+						GetMaximumTextAreaHeight(property.stringValue)
+					)
 				};
 
 				string textAreaValue = EditorGUI.TextArea(textAreaRect, property.stringValue);
@@ -69,6 +84,32 @@ namespace NaughtyAttributes.Editor
 			string content = Regex.Replace(text, @"\r\n|\n\r|\r|\n", Environment.NewLine);
 			string[] lines = content.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
 			return lines.Length;
+		}
+
+		private float GetMinimumTextAreaHeight()
+		{
+			minimum = minimum.HasValue
+				? minimum
+				: (EditorGUIUtility.singleLineHeight - 3.0f) * ((ResizableTextAreaAttribute)attribute).MinimumLines + 3.0f;
+
+			return minimum.Value;
+		}
+
+		private float InitializeMaximumHeightCalculator(string text) {
+			var targetAttribute = (ResizableTextAreaAttribute) attribute;
+			calculateMaximumTextAreaHeight = (targetAttribute.MaximumLines > 0)
+				? (Func<string, float>)GetMaximumTextAreaHeight
+				: (Func<string, float>)GetTextAreaHeight;
+			return calculateMaximumTextAreaHeight(text);
+		}
+
+		private float GetMaximumTextAreaHeight(string _)
+		{
+			maximum = maximum.HasValue
+				? maximum
+				: (EditorGUIUtility.singleLineHeight - 3.0f) * ((ResizableTextAreaAttribute)attribute).MaximumLines + 3.0f;
+
+			return maximum.Value;
 		}
 
 		private float GetTextAreaHeight(string text)

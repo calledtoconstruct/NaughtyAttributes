@@ -11,6 +11,9 @@ namespace NaughtyAttributes.Test
 		[MinMaxSlider(0.0f, 1.0f)]
 		public Vector2 minMaxSlider;
 
+		[ResizableTextArea(5, 10)]
+		public string textArea;
+
 		[Dropdown("GetVectorValues")]
 		public Vector3 vectorValue;
 
